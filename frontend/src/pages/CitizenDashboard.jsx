@@ -1,6 +1,13 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { Camera, MapPin, Upload, CheckCircle2 } from 'lucide-react';
+import { 
+  Camera, 
+  MapPin, 
+  CheckCircle2, 
+  Loader2, 
+  MessageSquare, 
+  AlertCircle 
+} from 'lucide-react';
 
 const CitizenDashboard = () => {
   const [image, setImage] = useState("");
@@ -8,32 +15,28 @@ const CitizenDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Function to capture Geo-location
   const getGeoLocation = () => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
+      navigator.geolocation.getCurrentPosition((pos) => {
         setLocation({
-          lat: position.coords.latitude.toFixed(6),
-          lng: position.coords.longitude.toFixed(6)
+          lat: pos.coords.latitude.toFixed(6).toString(),
+          lng: pos.coords.longitude.toFixed(6).toString()
         });
       });
-    } else {
-      alert("Geolocation is not supported by this browser.");
     }
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files?.[0];
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
     if (file) {
       setImage(URL.createObjectURL(file));
-      getGeoLocation(); // Automatically trigger geo-tagging on upload
+      getGeoLocation();
     }
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const handleSubmit = (e) => {
+    e.preventDefault();
     setLoading(true);
-    // Simulate API call
     setTimeout(() => {
       setLoading(false);
       setSubmitted(true);
@@ -42,82 +45,126 @@ const CitizenDashboard = () => {
 
   if (submitted) {
     return (
-      <div className="bg-white p-12 rounded-[3rem] shadow-xl border border-emerald-100 text-center animate-in zoom-in duration-500">
-        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+      <div className="bg-white/90 backdrop-blur-md p-12 rounded-[3rem] shadow-2xl border border-emerald-100 text-center animate-in zoom-in duration-500 max-w-md mx-auto">
+        <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
+          <CheckCircle2 className="w-12 h-12 text-white" />
         </div>
-        <h2 className="text-2xl font-black text-gray-900 mb-2">Report Submitted!</h2>
-        <p className="text-gray-500 mb-8">The Panchayat has been notified. Thank you for keeping our tourism zones clean.</p>
-        <button onClick={() => setSubmitted(false)} className="text-emerald-600 font-bold hover:underline">Report another issue</button>
+        <h2 className="text-3xl font-black text-gray-900 mb-2">Success!</h2>
+        <p className="text-gray-500 font-medium mb-8">The Panchayat has received your report. Together we keep the village clean!</p>
+        <button 
+          onClick={() => {setSubmitted(false); setImage(""); setLocation({lat:"", lng:""});}} 
+          className="px-8 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-md"
+        >
+          New Report
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="bg-slate-50 rounded-[2.5rem] shadow-xl border border-gray-200 p-8">
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Visual Header within Content */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-black text-gray-800">Submit Intelligence Report</h1>
+        <p className="text-gray-500 text-sm font-medium">Capture environmental or civic issues instantly.</p>
+      </div>
+
+      <div className="bg-white/80 backdrop-blur-sm rounded-[3rem] p-8 shadow-2xl border border-gray">
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          {/* Image Upload Area */}
-          <div className="relative group">
+          {/* Enhanced Image Capture Area */}
+          <div className="relative group overflow-hidden rounded-[2.5rem] border-2 border-dashed border-emerald-100 bg-emerald-50/30 hover:bg-emerald-50 transition-all cursor-pointer">
             <input 
               type="file" 
               accept="image/*" 
               capture="environment" 
-              onChange={handleImageUpload}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              onChange={handleImageUpload} 
+              className="absolute inset-0 opacity-0 cursor-pointer z-20" 
             />
-            <div className={`aspect-video rounded-[2rem] border-2 border-dashed flex flex-col items-center justify-center transition-all ${image ? 'border-emerald-500' : 'border-gray-200 group-hover:border-emerald-300 bg-gray-50'}`}>
+            <div className="aspect-video md:aspect-[21/9] flex flex-col items-center justify-center pointer-events-none p-4">
               {image ? (
-                <img src={image} alt="Preview" className="w-full h-full object-cover rounded-[1.9rem]" />
+                <img src={image} alt="Preview" className="w-full h-full object-cover rounded-2xl shadow-inner" />
               ) : (
-                <>
-                  <Camera className="w-12 h-12 text-gray-300 mb-4" />
-                  <p className="text-sm font-bold text-gray-400">Tap to Take Photo</p>
-                  <p className="text-[10px] text-gray-300 uppercase tracking-widest mt-1">Camera will Geo-Tag automatically</p>
-                </>
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                    <Camera className="w-8 h-8 text-emerald-500 animate-pulse" />
+                  </div>
+                  <p className="text-sm font-black text-emerald-800 tracking-tight">Tap to Photo / Video</p>
+                  <p className="text-[10px] text-emerald-600/60 uppercase font-bold mt-1 tracking-widest">Auto Geo-Tagging Enabled</p>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Location Feedback */}
-          <div className="flex items-center gap-4 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-            <div className="bg-emerald-500 p-2 rounded-lg text-white">
-              <MapPin className="w-4 h-4" />
+          {/* Geo-Tag Visualization */}
+          <div className={`p-5 rounded-2xl border flex items-center gap-4 transition-all ${location.lat ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-gray-100'}`}>
+            <div className={`p-3 rounded-xl shadow-sm ${location.lat ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-red-500 drop-shadow-md'}`}>
+              <MapPin className="w-5 h-5" />
             </div>
-            <div>
-              <p className="text-[10px] font-black text-emerald-800 uppercase tracking-widest">Automatic Geo-Tag</p>
-              <p className="text-xs text-emerald-600 font-medium">
-                {location.lat ? `${location.lat}, ${location.lng}` : "Awaiting location access..."}
+            <div className="flex-1">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Geographical Signature</p>
+              <p className={`text-sm font-bold ${location.lat ? 'text-emerald-700' : 'text-gray-400'}`}>
+                {location.lat ? `${location.lat} N, ${location.lng} E` : "Awaiting Signal..."}
               </p>
             </div>
+            {location.lat && <div className="w-3 h-3 bg-emerald-500 rounded-full animate-ping" />}
           </div>
 
-          {/* Issue Details */}
-          <div className="space-y-4">
-            <select className="w-full px-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
-              <option>Select Issue Category</option>
-              <option>Waste / Garbage</option>
-              <option>Noise Pollution</option>
-              <option>Traffic Congestion</option>
-              <option>Illegal Construction</option>
-            </select>
+          {/* Form Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Category Selection */}
+            <div className="relative">
+              <AlertCircle className="absolute left-4 top-4 w-5 h-5 text-emerald-600/40" />
+              <select required className="w-full pl-12 pr-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-emerald-500 transition-all appearance-none cursor-pointer shadow-inner">
+                <option value="">Issue Category</option>
+                <option>Waste Management</option>
+                <option>Water Infrastructure</option>
+                <option>Traffic / Congestion</option>
+                <option>Noise Control</option>
+              </select>
+            </div>
 
-            <textarea 
-              placeholder="Describe the issue... (Optional)"
-              className="w-full px-6 py-4 bg-gray-50 hover:bg-emerald-50 border-none rounded-2xl text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500 hover:ring-2 hover:ring-emerald-400 transition-all min-h-[120px]"
-            ></textarea>
+            {/* Title / Short Desc */}
+            <div className="relative">
+              <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-emerald-600/40" />
+              <input 
+                type="text" 
+                placeholder="Brief Title (e.g. Broken Pipe)" 
+                className="w-full pl-12 pr-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner"
+              />
+            </div>
           </div>
 
+          <textarea 
+            placeholder="Detailed description of the issue..."
+            className="w-full p-6 bg-gray-50 border-none rounded-3xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-emerald-500 transition-all min-h-[140px] shadow-inner"
+          ></textarea>
+
+          {/* Action Button */}
           <button 
             type="submit" 
             disabled={loading || !image}
-            className={`w-full py-5 rounded-2xl font-black text-sm tracking-widest shadow-lg transition-all active:scale-95 ${loading || !image ? 'bg-gray-300 text-gray-400' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'}`}
+            className={`w-full py-5 rounded-2xl font-black text-sm tracking-[0.2em] transition-all relative overflow-hidden group shadow-xl ${
+              loading || !image 
+                ? 'bg-gray-100 text-zinc-500 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:scale-[1.02] active:scale-95 shadow-emerald-200'
+            }`}
           >
-            {loading ? "PROCESSING..." : "SUBMIT REPORT"}
+            {loading ? (
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-white" />
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                TRANSMIT REPORT <CheckCircle2 className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </span>
+            )}
           </button>
         </form>
       </div>
+      
+      {/* Footer Note */}
+      <p className="text-center text-[10px] text-gray-400 mt-6 font-bold uppercase tracking-widest px-10">
+        
+      </p>
     </div>
   );
 };
