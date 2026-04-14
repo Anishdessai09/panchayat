@@ -1,170 +1,126 @@
 // @ts-nocheck
-import React, { useState } from 'react';
-import { 
-  Camera, 
-  MapPin, 
-  CheckCircle2, 
-  Loader2, 
-  MessageSquare, 
-  AlertCircle 
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Camera, MapPin, Loader2, Target } from 'lucide-react';
+import { supabase } from '../supabaseClient';
+import CitizenDashboardLayout from '../layouts/CitizenDashboardLayout';
 
 const CitizenDashboard = () => {
-  const [image, setImage] = useState("");
+  const [activeNav, setActiveNav] = useState('Report Issue');
+  const [reports, setReports] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [location, setLocation] = useState({ lat: "", lng: "" });
-  const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [formData, setFormData] = useState({ category: "", title: "", description: "" });
 
-  const getGeoLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        setLocation({
-          lat: pos.coords.latitude.toFixed(6).toString(),
-          lng: pos.coords.longitude.toFixed(6).toString()
-        });
-      });
-    }
+  useEffect(() => {
+    fetchMyReports();
+    const channel = supabase.channel('c-updates').on('postgres_changes', { event: '*', schema: 'public', table: 'citizens' }, () => fetchMyReports()).subscribe();
+    return () => supabase.removeChannel(channel);
+  }, []);
+
+  const fetchMyReports = async () => {
+    const { data } = await supabase.from('citizens').select('*').order('created_at', { ascending: false });
+    if (data) setReports(data);
   };
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImage(URL.createObjectURL(file));
-      getGeoLocation();
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => setLocation({ lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) }));
+      }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-    }, 2000);
+    if (!formData.category || !imageFile) return alert("Category and Image are required!");
+    
+    setUploading(true);
+    try {
+      const fileName = `issue-${Date.now()}.jpg`;
+      await supabase.storage.from('resolutions').upload(fileName, imageFile);
+      const { data: { publicUrl } } = supabase.storage.from('resolutions').getPublicUrl(fileName);
+
+      await supabase.from('citizens').insert([{
+        name: "Madhura S.",
+        category: formData.category,
+        title: formData.title || "Untitled Incident",
+        description: formData.description || "No description provided.",
+        latitude: parseFloat(location.lat || 0),
+        longitude: parseFloat(location.lng || 0),
+        image_url: publicUrl, 
+        village: 'Balli',
+        status: 'Pending'
+      }]);
+
+      alert("Transmission successful.");
+      setActiveNav('My Activity');
+      fetchMyReports();
+    } catch (err) { alert(err.message); } finally { setUploading(false); }
   };
 
-  if (submitted) {
-    return (
-      <div className="bg-white/90 backdrop-blur-md p-12 rounded-[3rem] shadow-2xl border border-emerald-100 text-center animate-in zoom-in duration-500 max-w-md mx-auto">
-        <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-200">
-          <CheckCircle2 className="w-12 h-12 text-white" />
-        </div>
-        <h2 className="text-3xl font-black text-gray-900 mb-2">Success!</h2>
-        <p className="text-gray-500 font-medium mb-8">The Panchayat has received your report. Together we keep the village clean!</p>
-        <button 
-          onClick={() => {setSubmitted(false); setImage(""); setLocation({lat:"", lng:""});}} 
-          className="px-8 py-3 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-md"
-        >
-          New Report
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Visual Header within Content */}
-      <div className="mb-9 rounded-3xl bg-zinc-300 h-20  shadow-2xl border border-black-100 text-white text-center">
-        <h1 className="text-2xl font-black mt-6 text-gray-800">REPORT   ISSUE</h1>
-      </div>
-
-      <div className="bg-white/80 backdrop-blur-sm rounded-[3rem] p-8 shadow-2xl border border-gray">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* Enhanced Image Capture Area */}
-          <div className="relative group overflow-hidden rounded-[2.5rem] border-2 border-dashed border-emerald-100 bg-emerald-50/30 hover:bg-emerald-50 transition-all cursor-pointer">
-            <input 
-              type="file" 
-              accept="image/*" 
-              capture="environment" 
-              onChange={handleImageUpload} 
-              className="absolute inset-0 opacity-0 cursor-pointer z-20" 
-            />
-            <div className="aspect-video md:aspect-[21/9] flex flex-col items-center justify-center pointer-events-none p-4">
-              {image ? (
-                <img src={image} alt="Preview" className="w-full h-full object-cover rounded-2xl shadow-inner" />
-              ) : (
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                    <Camera className="w-8 h-8 text-emerald-500 animate-pulse" />
-                  </div>
-                  <p className="text-sm font-black text-emerald-800 tracking-tight">Tap to Photo</p>
-                  <p className="text-[10px] text-emerald-600/60 uppercase font-bold mt-1 tracking-widest">Auto Geo-Tagging Enabled</p>
+  const renderContent = () => {
+    if (activeNav === 'My Activity' || activeNav === 'Solved Issues') {
+      const displayData = activeNav === 'Solved Issues' ? reports.filter(r => r.status === 'Resolved') : reports;
+      return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+          {displayData.map(r => (
+            <div key={r.id} className="bg-white p-5 md:p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col justify-between w-full">
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <span className="text-[9px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest">{r.category}</span>
+                  <span className={`px-3 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase border ${r.status === 'Resolved' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-orange-50 text-orange-600 border-orange-100'}`}>{r.status}</span>
+                </div>
+                <h3 className="font-black text-md md:text-lg tracking-tighter mb-2">{r.title}</h3>
+                <p className="text-slate-500 text-[11px] md:text-xs font-medium mb-4 line-clamp-3">{r.description}</p>
+              </div>
+              {r.resolution_proof && (
+                <div className="mt-2 rounded-2xl overflow-hidden border-2 border-emerald-100">
+                  <p className="bg-emerald-50 p-2 text-[8px] md:text-[9px] font-black text-emerald-700 flex items-center gap-2 uppercase tracking-tighter"><Target size={12}/> Official Proof</p>
+                  <img src={r.resolution_proof} alt="Proof" className="w-full h-32 md:h-40 object-cover" />
                 </div>
               )}
             </div>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full max-w-xl mx-auto bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 shadow-sm border border-slate-50">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5 md:gap-6">
+          <div className="aspect-video w-full rounded-2xl md:rounded-3xl bg-slate-50 border-2 border-dashed border-slate-200 overflow-hidden relative flex items-center justify-center">
+            <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="absolute inset-0 opacity-0 z-10 cursor-pointer" />
+            {imagePreview ? <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" /> : <div className="text-center text-slate-400 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><Camera className="mx-auto mb-2 opacity-20" size={32} /> Snap Photo</div>}
           </div>
-
-          {/* Geo-Tag Visualization */}
-          <div className={`p-5 rounded-2xl border flex items-center gap-4 transition-all ${location.lat ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-gray-100'}`}>
-            <div className={`p-3 rounded-xl shadow-sm ${location.lat ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-red-500 drop-shadow-md'}`}>
-              <MapPin className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Geographical Signature</p>
-              <p className={`text-sm font-bold ${location.lat ? 'text-emerald-700' : 'text-gray-400'}`}>
-                {location.lat ? `${location.lat} N, ${location.lng} E` : "Awaiting Signal..."}
-              </p>
-            </div>
-            {location.lat && <div className="w-3 h-3 bg-emerald-500 rounded-full animate-ping" />}
+          <select required onChange={e => setFormData({...formData, category: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-emerald-500">
+            <option value="">Select Category (Required)</option>
+            <option value="Garbage">Garbage</option>
+            <option value="Road Issue">Road Issue</option>
+            <option value="Water/Elec">Water/Elec</option>
+          </select>
+          <input type="text" placeholder="Title (Optional)" onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none" />
+          <textarea placeholder="Description (Optional)" onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none h-24 md:h-32 resize-none" />
+          <div className="flex items-center gap-3 p-3 md:p-4 bg-emerald-50/50 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black text-emerald-700 tracking-widest uppercase">
+            <MapPin size={14} /> {location.lat ? `${location.lat}, ${location.lng}` : "GPS Awaiting..."}
           </div>
-
-          {/* Form Content */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Category Selection */}
-            <div className="relative">
-              <AlertCircle className="absolute left-4 top-4 w-5 h-5 text-emerald-600/40" />
-              <select required className="w-full pl-12 pr-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-emerald-500 transition-all appearance-none cursor-pointer shadow-inner">
-                <option value="">Issue Category</option>
-                <option>Waste Management</option>
-                <option>Water Infrastructure</option>
-                <option>Traffic / Congestion</option>
-                <option>Noise Control</option>
-              </select>
-            </div>
-
-            {/* Title / Short Desc */}
-            <div className="relative">
-              <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-emerald-600/40" />
-              <input 
-                type="text" 
-                placeholder="Brief Title (e.g. Broken Pipe)" 
-                className="w-full pl-12 pr-6 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold text-gray-700 focus:ring-2 focus:ring-emerald-500 transition-all shadow-inner"
-              />
-            </div>
-          </div>
-
-          <textarea 
-            placeholder="Detailed description of the issue..."
-            className="w-full p-6 bg-gray-50 border-none rounded-3xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-emerald-500 transition-all min-h-[140px] shadow-inner"
-          ></textarea>
-
-          {/* Action Button */}
-          <button 
-            type="submit" 
-            disabled={loading || !image}
-            className={`w-full py-5 rounded-2xl font-black text-sm tracking-[0.2em] transition-all relative overflow-hidden group shadow-xl ${
-              loading || !image 
-                ? 'bg-gray-100 text-zinc-500 cursor-not-allowed' 
-                : 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white hover:scale-[1.02] active:scale-95 shadow-emerald-200'
-            }`}
-          >
-            {loading ? (
-              <Loader2 className="w-6 h-6 animate-spin mx-auto text-white" />
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                TRANSMIT REPORT <CheckCircle2 className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </span>
-            )}
+          <button disabled={uploading} className="w-full py-4 md:py-5 bg-emerald-600 text-white rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs tracking-widest hover:bg-emerald-700 shadow-lg disabled:opacity-50">
+            {uploading ? <Loader2 className="animate-spin mx-auto" size={18} /> : "TRANSMIT INCIDENT"}
           </button>
         </form>
       </div>
-      
-      {/* Footer Note */}
-      <p className="text-center text-[10px] text-gray-400 mt-6 font-bold uppercase tracking-widest px-10">
-        
-      </p>
-    </div>
+    );
+  };
+
+  return (
+    <CitizenDashboardLayout activeNav={activeNav} setActiveNav={setActiveNav} userName="Madhura S.">
+      {renderContent()}
+    </CitizenDashboardLayout>
   );
 };
 

@@ -1,103 +1,98 @@
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Map as MapIcon, CheckCircle, LogOut, Leaf, LayoutDashboard } from 'lucide-react';
+// @ts-nocheck
+import React, { useState } from 'react';
+import { ShieldCheck, Camera, Layers, CheckCircle, LogOut, UserCircle, Menu, X } from 'lucide-react';
 
-const CitizenDashboardLayout = ({ children }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
+const CitizenDashboardLayout = ({ children, activeNav, setActiveNav, userName }) => {
+  // NEW: State to control mobile sidebar
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const menuItems = [
-    { icon: LayoutDashboard, label: 'Overview', path: '/citizen/dashboard' },
-    { icon: MapIcon, label: 'Heatmap', path: '/citizen/heatmap' },
-    { icon: CheckCircle, label: 'Issue Solved', path: '/citizen/solved' },
+  const NAV_ITEMS = [
+    { name: 'Report Issue', icon: Camera },
+    { name: 'My Activity', icon: Layers },
+    { name: 'Solved Issues', icon: CheckCircle },
   ];
 
-  return (
-    // FIX: Removed 'items-center' to prevent the layout from centering off-screen
-    <div className="flex h-screen bg-slate-50 font-sans overflow-hidden flex-col md:flex-row pt-0 md:pt-4">
-      
-      {/* DESKTOP SIDEBAR */}
-      <aside className="hidden md:flex w-80 h-[94vh] ml-4 bg-gradient-to-b from-emerald-600 via-emerald-700 to-teal-900 text-white flex-col shadow-2xl rounded-3xl shrink-0">
-        <div className="p-8 flex items-center gap-3">
-          <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md border border-white/30">
-            <Leaf className="w-6 h-6 text-white" />
-          </div>
-          <span className="font-bold text-xl tracking-tight uppercase">Citizen<span className="font-light opacity-80 uppercase">Portal</span></span>
-        </div>
+  const handleNavClick = (name) => {
+    setActiveNav(name);
+    setIsMobileMenuOpen(false); // Close menu after clicking on mobile
+  };
 
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 ${
-                  isActive ? 'bg-white/20 shadow-lg border border-white/10' : 'hover:bg-white/5 opacity-70'
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span className="font-bold text-sm tracking-wide">{item.label}</span>
-              </button>
-            );
-          })}
+  return (
+    <div className="min-h-screen bg-[#F4F7F6] flex font-sans text-slate-900 overflow-x-hidden">
+      
+      {/* SIDEBAR */}
+      <div className={`
+        fixed inset-y-0 left-0 w-72 bg-emerald-600 p-8 flex flex-col text-white z-[60] shadow-2xl transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
+        md:translate-x-0 md:flex
+      `}>
+        {/* Close Button (Mobile Only) */}
+        <button 
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="md:hidden absolute top-6 right-6 p-2 bg-emerald-700 rounded-lg"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="flex items-center gap-3 mb-10 pb-4 border-b border-emerald-500/50">
+          <div className="p-2.5 bg-white/10 rounded-xl"><ShieldCheck size={26} /></div>
+          <h1 className="text-2xl font-black tracking-tighter uppercase">CitizenGuard</h1>
+        </div>
+        
+        <nav className="flex-1 space-y-3">
+          {NAV_ITEMS.map(item => (
+            <button 
+              key={item.name} 
+              onClick={() => handleNavClick(item.name)} 
+              className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl font-bold tracking-tight text-sm transition-all ${activeNav === item.name ? 'bg-white text-emerald-700 shadow-xl' : 'hover:bg-emerald-500'}`}
+            >
+              <item.icon size={18} /> {item.name}
+            </button>
+          ))}
         </nav>
 
-        <div className="p-6 border-t border-white/10">
-          <button 
-            onClick={() => handleNavigation('/')}
-            className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl 
-                       text-emerald-100 relative overflow-hidden group
-                       bg-white/5 backdrop-blur-md border border-white/10
-                       hover:border-red-400/40 hover:bg-red-500/10
-                       transition-all duration-300 shadow-lg"
-          >
-            <LogOut className="w-5 h-5 transition-all duration-500 group-hover:text-red-300" />
-            <span className="font-semibold text-sm tracking-wide">Logout</span>
-          </button>
-        </div>
-      </aside>
+        <button className="flex items-center gap-4 mt-auto px-6 py-4 bg-emerald-700 rounded-xl font-bold text-sm text-emerald-100 hover:bg-emerald-800 transition-all">
+          <LogOut size={18} /> Logout
+        </button>
+      </div>
 
-      {/* MOBILE BOTTOM NAV */}
-      <nav className="md:hidden fixed bottom-2 left-2 right-2 bg-white/90 border-gray-100 backdrop-blur-xl rounded-2xl flex justify-around items-center py-3 z-50 shadow-xl">
-        {menuItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          return (
-            <button 
-              key={item.label} 
-              onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-1 transition-all ${isActive ? 'text-emerald-600' : 'text-gray-400'}`}
-            >
-              <item.icon className="w-6 h-6" />
-              <span className="text-[10px] font-black uppercase tracking-tighter">{item.label.split(' ')[0]}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* MOBILE OVERLAY (Darkens screen when menu is open) */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-50 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
       {/* CONTENT AREA */}
-      <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* FIX: Changed margins to sit at the top of the main area */}
-        <header className="h-16 md:h-20 bg-white shadow-md border-b border-gray-100 flex items-center justify-between px-6 md:px-10 shrink-0 mx-4 mt-0 md:mt-2 rounded-2xl">
-          <h2 className="text-gray-900 font-black text-lg md:text-xl truncate">
-            {menuItems.find(i => i.path === location.pathname)?.label || 'Citizen Portal'}
-          </h2>
-          <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-bold border border-emerald-200 shadow-sm overflow-hidden">
-            <img 
-              src="https://t3.ftcdn.net/jpg/00/65/75/68/360_F_65756860_GUZwzOKNMUU3HldFoIA44qss7ZIrCG8I.jpg" 
-              className="object-cover w-full h-full"
-              alt="User"
-            />
+      <div className="flex-1 w-full md:ml-72 flex flex-col min-w-0">
+        <header className="fixed top-0 right-0 left-0 md:left-72 bg-[#F4F7F6]/90 backdrop-blur-md z-40 p-5 md:p-8 flex justify-between items-center border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            {/* FUNCTIONAL MOBILE MENU BUTTON */}
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden p-2 bg-white rounded-lg border hover:bg-slate-50 active:scale-95 transition-all"
+            >
+              <Menu size={20} className="text-emerald-600" />
+            </button>
+            <h2 className="text-lg md:text-3xl font-black tracking-tighter text-slate-800 uppercase truncate">
+              {activeNav}
+            </h2>
+          </div>
+          
+          <div className="flex items-center gap-3 p-1.5 md:p-2.5 bg-white rounded-2xl border shadow-sm">
+            <UserCircle className="text-emerald-600" size={24} />
+            <div className="hidden sm:block text-left">
+              <p className="font-black text-slate-800 text-[12px] tracking-tighter leading-none">{userName}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mt-1">Verified • Balli</p>
+            </div>
           </div>
         </header>
 
-        {/* FIX: Ensure overflow-y-auto is active with enough padding for the bottom nav */}
-        <section className="flex-1 overflow-y-auto p-4 md:p-10 pb-32 md:pb-12 bg-slate-50/50 scroll-smooth">
-          <div className="max-w-3xl mx-auto w-full">
-            {children}
-          </div>
-        </section>
-      </main>
+        <main className="flex-1 p-4 md:p-12 pt-24 md:pt-32 w-full max-w-full overflow-x-hidden">
+          {children}
+        </main>
+      </div>
     </div>
   );
 };
