@@ -9,6 +9,12 @@ const CitizenDashboard = () => {
   const [reports, setReports] = useState([]);
   const [uploading, setUploading] = useState(false);
   
+  // Get logged in user info from localStorage
+  const citizenName = localStorage.getItem('citizenName') || 'Guest User';
+  const citizenVillage = localStorage.getItem('citizenVillage') || 'Unknown';
+  const citizenPhone = localStorage.getItem('citizenPhone') || '';
+  const citizenTaluka = localStorage.getItem('citizenTaluka') || '';
+
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
   const [location, setLocation] = useState({ lat: "", lng: "" });
@@ -16,12 +22,18 @@ const CitizenDashboard = () => {
 
   useEffect(() => {
     fetchMyReports();
+    // Listening for changes to the table to update UI in real-time
     const channel = supabase.channel('c-updates').on('postgres_changes', { event: '*', schema: 'public', table: 'citizens' }, () => fetchMyReports()).subscribe();
     return () => supabase.removeChannel(channel);
   }, []);
 
   const fetchMyReports = async () => {
-    const { data } = await supabase.from('citizens').select('*').order('created_at', { ascending: false });
+    // We only want to see reports from OUR village
+    const { data } = await supabase
+      .from('citizens')
+      .select('*')
+      .eq('village', citizenVillage)
+      .order('created_at', { ascending: false });
     if (data) setReports(data);
   };
 
@@ -46,21 +58,29 @@ const CitizenDashboard = () => {
       await supabase.storage.from('resolutions').upload(fileName, imageFile);
       const { data: { publicUrl } } = supabase.storage.from('resolutions').getPublicUrl(fileName);
 
+      // POINT 1 & 2: Use dynamic data from login instead of hardcoded strings
       await supabase.from('citizens').insert([{
-        name: "Madhura S.",
+        name: citizenName,
+        phone: citizenPhone,
+        taluka: citizenTaluka,
+        village: citizenVillage,
         category: formData.category,
         title: formData.title || "Untitled Incident",
         description: formData.description || "No description provided.",
         latitude: parseFloat(location.lat || 0),
         longitude: parseFloat(location.lng || 0),
         image_url: publicUrl, 
-        village: 'Balli',
         status: 'Pending'
       }]);
 
       alert("Transmission successful.");
       setActiveNav('My Activity');
       fetchMyReports();
+      
+      // Clear form after success
+      setImagePreview("");
+      setImageFile(null);
+      setFormData({ category: "", title: "", description: "" });
     } catch (err) { alert(err.message); } finally { setUploading(false); }
   };
 
@@ -98,14 +118,14 @@ const CitizenDashboard = () => {
             <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="absolute inset-0 opacity-0 z-10 cursor-pointer" />
             {imagePreview ? <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" /> : <div className="text-center text-slate-400 font-black text-[9px] md:text-[10px] uppercase tracking-widest"><Camera className="mx-auto mb-2 opacity-20" size={32} /> Snap Photo</div>}
           </div>
-          <select required onChange={e => setFormData({...formData, category: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-emerald-500">
+          <select required value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-emerald-500">
             <option value="">Select Category (Required)</option>
             <option value="Garbage">Garbage</option>
             <option value="Road Issue">Road Issue</option>
             <option value="Water/Elec">Water/Elec</option>
           </select>
-          <input type="text" placeholder="Title (Optional)" onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none" />
-          <textarea placeholder="Description (Optional)" onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none h-24 md:h-32 resize-none" />
+          <input type="text" value={formData.title} placeholder="Title (Optional)" onChange={e => setFormData({...formData, title: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none" />
+          <textarea value={formData.description} placeholder="Description (Optional)" onChange={e => setFormData({...formData, description: e.target.value})} className="w-full p-3 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl font-bold text-xs outline-none h-24 md:h-32 resize-none" />
           <div className="flex items-center gap-3 p-3 md:p-4 bg-emerald-50/50 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black text-emerald-700 tracking-widest uppercase">
             <MapPin size={14} /> {location.lat ? `${location.lat}, ${location.lng}` : "GPS Awaiting..."}
           </div>
@@ -118,7 +138,7 @@ const CitizenDashboard = () => {
   };
 
   return (
-    <CitizenDashboardLayout activeNav={activeNav} setActiveNav={setActiveNav} userName="Madhura S.">
+    <CitizenDashboardLayout activeNav={activeNav} setActiveNav={setActiveNav} userName={citizenName}>
       {renderContent()}
     </CitizenDashboardLayout>
   );

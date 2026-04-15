@@ -10,6 +10,25 @@ const DashboardLayout = ({ children }) => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 768);
 
+  // --- UPDATED LOGOUT LOGIC ---
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to exit the Admin Portal?")) {
+      // 1. Clear Admin session data
+      localStorage.removeItem('adminId');
+      localStorage.removeItem('adminVillage');
+      
+      // 2. Clear Citizen session data (optional, but recommended for complete logout)
+      localStorage.removeItem('citizenName');
+      localStorage.removeItem('citizenVillage');
+      localStorage.removeItem('citizenPhone');
+      localStorage.removeItem('citizenTaluka');
+
+      // 3. HARD REDIRECT to the root
+      // This forces App.jsx to re-evaluate and send the user back to the Login Page.
+      window.location.href = "/panchayat-tourism-system/";
+    }
+  };
+
   const handleNavigation = (path) => {
     navigate(path);
     if (window.innerWidth < 768) setSidebarOpen(false);
@@ -55,7 +74,6 @@ const DashboardLayout = ({ children }) => {
         {/* Navigation Links */}
         <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
-            // Updated active logic: Matches exact path or nested sub-paths
             const isActive = location.pathname === item.path || (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
             
             return (
@@ -75,10 +93,10 @@ const DashboardLayout = ({ children }) => {
           })}
         </nav>
 
-        {/* Footer / Logout */}
+        {/* Footer / Logout Section */}
         <div className="p-6 border-t border-white/10">
           <button 
-            onClick={() => handleNavigation('/')}
+            onClick={handleLogout} // <--- UPDATED THIS LINE
             className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-emerald-100 bg-white/5 border border-white/10 hover:bg-red-500/20 hover:border-red-500/30 transition-all duration-300 group"
           >
             <LogOut className="w-5 h-5 group-hover:text-red-400" />
@@ -108,7 +126,10 @@ const DashboardLayout = ({ children }) => {
           <div className="flex items-center gap-4 bg-emerald-50/50 px-4 py-2 rounded-2xl border border-emerald-100">
             <div className="flex flex-col items-end">
               <span className="text-[9px] text-emerald-600 font-black uppercase tracking-tighter">Authorized Access</span>
-              <span className="text-sm font-black text-[#1D3E31]">ADMINISTRATOR</span>
+              {/* Dynamic Village Name from LocalStorage */}
+              <span className="text-sm font-black text-[#1D3E31] uppercase">
+                {localStorage.getItem('adminVillage') || 'ADMINISTRATOR'}
+              </span>
             </div>
             <div className="h-8 w-px bg-emerald-200/50"></div>
             <div className="w-10 h-10 bg-[#1D3E31] rounded-xl flex items-center justify-center text-[#A3E635] font-black shadow-lg">A</div>

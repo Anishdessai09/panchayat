@@ -1,38 +1,56 @@
 // @ts-nocheck
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Heatmap from './pages/Heatmap';
 import LoginPage from './pages/LoginPage';
-import CitizenDashboard from './pages/CitizenDashboard'; // Ensure this exists in your pages folder
+import CitizenDashboard from './pages/CitizenDashboard';
 
 function App() {
+  // Helper functions to check auth status dynamically from the "storage locker"
+  const isCitizen = () => !!localStorage.getItem('citizenName');
+  const isAdmin = () => !!localStorage.getItem('adminId');
+
   return (
     <BrowserRouter basename="/panchayat-tourism-system">
       <Routes>
-        {/* 1. Public Entry Point (Login Page) */}
-        <Route path="/" element={<LoginPage />} />
+        {/* 1. Public Entry: Now checks for existing sessions */}
+        <Route 
+          path="/" 
+          element={
+            isCitizen() ? <Navigate to="/CitizenDashboard" replace /> : 
+            isAdmin() ? <Navigate to="/dashboard" replace /> : 
+            <LoginPage />
+          } 
+        />
 
-        {/* 2. Citizen Flow: Redirected here after reporting */}
-        <Route path="/CitizenDashboard" element={<CitizenDashboard />} />
+        {/* 2. Citizen Route: Protected from unauthorized access */}
+        <Route 
+          path="/CitizenDashboard" 
+          element={isCitizen() ? <CitizenDashboard /> : <Navigate to="/" replace />} 
+        />
 
-        {/* 3. Admin Flow: Nested Routes under /dashboard */}
+        {/* 3. Admin Routes: Nested under DashboardLayout with Auth Guard */}
         <Route 
           path="/dashboard" 
-          element={<DashboardLayout children={<Outlet />} />}
+          element={
+            isAdmin() ? (
+              <DashboardLayout>
+                <Outlet />
+              </DashboardLayout>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         >
-          {/* Default view: /dashboard */}
           <Route index element={<Dashboard />} /> 
-          
-          {/* Heatmap view: /dashboard/heatmap */}
           <Route path="heatmap" element={<Heatmap />} />
-          
-          {/* Placeholder for future admin pages */}
-          {/* <Route path="issues" element={<IssuesSolved />} /> */}
+          {/* Ensure your solved issues route is also here if needed */}
+          <Route path="issues" element={<div>Solved Issues Content</div>} />
         </Route>
 
-        {/* 4. Fallback: Redirect to Login if route doesn't exist */}
-        <Route path="*" element={<LoginPage />} />
+        {/* 4. Fallback: Catch-all redirect to root */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
