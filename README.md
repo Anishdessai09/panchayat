@@ -1,1 +1,0 @@
-# panchayat-tourism-system
